@@ -130,24 +130,36 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => r.json())
       .then(posters => {
         referenceGallery.innerHTML = "";
-        posters.forEach(p => {
+        
+        const addReferenceItem = (url, isSelected) => {
           const img = document.createElement("img");
-          img.src = p.url;
-          img.className = "reference-item";
+          img.src = url;
+          img.className = "reference-item" + (isSelected ? " selected" : "");
+          
           img.addEventListener("click", () => {
              document.querySelectorAll(".reference-item").forEach(el => el.classList.remove("selected"));
-             if (selectedReferenceUrl === p.url) {
-               // Deselect
+             if (selectedReferenceUrl === url) {
                selectedReferenceUrl = null; 
                currentPosterImg.src = movie.poster_url || "";
              } else {
-               // Select
                img.classList.add("selected");
-               selectedReferenceUrl = p.url;
-               currentPosterImg.src = p.url;
+               selectedReferenceUrl = url;
+               currentPosterImg.src = url;
              }
           });
           referenceGallery.appendChild(img);
+        };
+        
+        // Always place the active movie poster first and pre-select it
+        if (movie.poster_url) {
+          addReferenceItem(movie.poster_url, true);
+          selectedReferenceUrl = movie.poster_url;
+        }
+
+        posters.forEach(p => {
+          if (p.url !== movie.poster_url) {
+            addReferenceItem(p.url, false);
+          }
         });
       })
       .catch(e => {
