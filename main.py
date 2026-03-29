@@ -20,19 +20,22 @@ PLEX_URL = os.getenv("PLEX_URL")
 PLEX_TOKEN = os.getenv("PLEX_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-try:
-    plex = PlexServer(PLEX_URL, PLEX_TOKEN) if PLEX_URL and PLEX_TOKEN else None
-except Exception as e:
-    print(f"Failed to connect to Plex: {e}")
-    plex = None
+missing = [name for name, val in [("PLEX_URL", PLEX_URL), ("PLEX_TOKEN", PLEX_TOKEN), ("GEMINI_API_KEY", GEMINI_API_KEY)] if not val]
+if missing:
+    print(f"ERROR: Missing required environment variables: {', '.join(missing)}")
+    raise SystemExit(1)
 
-if GEMINI_API_KEY:
-    openai_client = AsyncOpenAI(
-        api_key=GEMINI_API_KEY,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-    )
-else:
-    openai_client = None
+try:
+    plex = PlexServer(PLEX_URL, PLEX_TOKEN)
+    plex.library.sections()  # validate the connection actually works
+except Exception as e:
+    print(f"ERROR: Failed to connect to Plex at {PLEX_URL}: {e}")
+    raise SystemExit(1)
+
+openai_client = AsyncOpenAI(
+    api_key=GEMINI_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
 
 app = FastAPI(title="Plex Poster Generator")
 
@@ -73,14 +76,12 @@ def get_movies(library_id: str):
     # The key returned as s.key is usually numeric
     try:
         section = plex.library.sectionByID(int(library_id))
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=404, detail="Library not found")
 
     # Fetch recently added movies or all movies (we'll limit to 50 for performance preview)
     # TBD: In a real app we might paginate or search
     movies = section.all()
-    # Let's take the first 100 for now
-    movies = movies[:100]
     
     results = []
     for m in movies:
@@ -88,7 +89,7 @@ def get_movies(library_id: str):
             "id": m.ratingKey,
             "title": m.title,
             "year": m.year,
-            "poster_url": m.posterUrl if m.thumb else None
+            "poster_url": (plex.url(m.thumb) + f"?X-Plex-Token={PLEX_TOKEN}") if m.thumb else None
         })
     return results
 
