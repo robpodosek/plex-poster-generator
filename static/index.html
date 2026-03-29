@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plex AI Poster Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">
+      <svg viewBox="0 0 458 458" width="30" height="30" fill="#e5a00d">
+        <path d="M0,0h458v458H0V0z M229,114.5L114.5,229L229,343.5L343.5,229L229,114.5z"/>
+      </svg>
+      <h1>Plex Poster AI</h1>
+    </div>
+    
+    <div class="server-status" id="server-status">
+      Checking connection...
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <div class="select-wrapper">
+        <label for="library-select">Select Library</label>
+        <select id="library-select" disabled>
+          <option>Loading libraries...</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="movies-grid" id="movies-grid">
+      <!-- Movies will be injected here -->
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="poster-modal">
+    <div class="modal-content">
+      <button class="close-btn" id="close-modal">&times;</button>
+      
+      <div class="modal-body">
+        <div class="posters-view">
+          <div class="poster-column">
+            <h3>Current Poster</h3>
+            <div class="poster-frame">
+              <img id="current-poster-img" src="" alt="Current Poster" />
+            </div>
+          </div>
+          
+          <div class="poster-column">
+            <h3>New Poster</h3>
+            <div class="poster-frame" id="new-poster-frame">
+              <div class="placeholder active" id="new-poster-placeholder">
+                AI Driven Imagination
+              </div>
+              <img id="new-poster-img" src="" alt="New Poster" class="hidden" />
+              <div class="loading-overlay hidden" id="loading-overlay">
+                <div class="spinner"></div>
+                <p>Generating artwork...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="generation-controls">
+          <h2 id="modal-movie-title">Movie Title</h2>
+          <p class="subtitle">Provide a creative prompt for the AI to redesign this movie's poster.</p>
+          
+          <textarea id="prompt-input" rows="3" placeholder="e.g., A minimalist vector art interpretation with neon colors..."></textarea>
+          
+          <div class="actions">
+            <button class="btn btn-primary" id="generate-btn">Generate Image</button>
+            <button class="btn btn-success hidden" id="apply-btn">Apply to Plex</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
