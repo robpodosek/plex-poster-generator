@@ -3,9 +3,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const moviesGrid = document.getElementById("movies-grid");
   const serverStatus = document.getElementById("server-status");
   
-  // Modal elements
-  const modal = document.getElementById("poster-modal");
-  const closeBtn = document.getElementById("close-modal");
+  // Inspector elements
+  const inspectorPanel = document.getElementById("inspector-panel");
+  const inspectorBackdrop = document.getElementById("inspector-backdrop");
+  const closeBtn = document.getElementById("close-inspector");
   const modalTitle = document.getElementById("modal-movie-title");
   const currentPosterImg = document.getElementById("current-poster-img");
   const newPosterImg = document.getElementById("new-poster-img");
@@ -19,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentMovieId = null;
   let currentGeneratedUrl = null;
   let selectedReferenceUrl = null;
+  let previousFocusElement = null; // for Focus Trap
 
   // Initialize
   checkStatus();
@@ -29,14 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("/api/status");
       const data = await res.json();
       if (data.plex_connected && data.openai_configured) {
-        serverStatus.textContent = "● Connected";
+        serverStatus.textContent = "CONNECTED // ONLINE";
         serverStatus.className = "server-status connected";
       } else {
-        serverStatus.textContent = "● Configuration Missing";
+        serverStatus.textContent = "ERR // CONFIG MISSING";
         serverStatus.className = "server-status error";
       }
     } catch (e) {
-      serverStatus.textContent = "● Backend Disconnected";
+      serverStatus.textContent = "ERR // NO CONNECTION";
       serverStatus.className = "server-status error";
     }
   }
@@ -47,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) throw new Error("Failed to load");
       const libs = await res.json();
       
-      librarySelect.innerHTML = "<option value=''>Select a library...</option>";
+      librarySelect.innerHTML = "<option value=''>AWAITING SELECTION...</option>";
       libs.forEach(lib => {
         const opt = document.createElement("option");
         opt.value = lib.id;
@@ -55,8 +57,10 @@ document.addEventListener("DOMContentLoaded", () => {
         librarySelect.appendChild(opt);
       });
       librarySelect.disabled = false;
+      librarySelect.setAttribute("aria-busy", "false");
     } catch (err) {
-      librarySelect.innerHTML = "<option>Failed to load libraries</option>";
+      librarySelect.innerHTML = "<option>ERR // LOAD FAILED</option>";
+      librarySelect.setAttribute("aria-busy", "false");
     }
   }
 
@@ -64,27 +68,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const libId = e.target.value;
     if (!libId) return;
     
-    moviesGrid.innerHTML = "<p>Loading movies...</p>";
+    moviesGrid.innerHTML = "<p>Retrieving database records...</p>";
+    moviesGrid.setAttribute("aria-busy", "true");
     try {
       const res = await fetch(`/api/libraries/${libId}/movies`);
       const movies = await res.json();
       renderMovies(movies);
     } catch (err) {
-      moviesGrid.innerHTML = "<p>Error loading movies.</p>";
+      moviesGrid.innerHTML = "<p>ERR // Movie fetch failed.</p>";
+    } finally {
+      moviesGrid.setAttribute("aria-busy", "false");
     }
   });
 
   function renderMovies(movies) {
     moviesGrid.innerHTML = "";
     movies.forEach(movie => {
-      const card = document.createElement("div");
+      // Changed div to button for semantic WCAG compliance
+      const card = document.createElement("button");
       card.className = "movie-card";
+      card.setAttribute("aria-label", `Edit poster for ${movie.title} (${movie.year || 'Unknown year'})`);
       
       const img = document.createElement("img");
       img.className = "movie-poster";
       img.src = movie.poster_url || "/static/placeholder.jpg";
-      img.alt = movie.title;
-      img.onerror = () => { img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="; }; // transparent fallback
+      img.alt = ""; // Decorative, title is in the card
+      img.onerror = () => { img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="; }; 
       
       const info = document.createElement("div");
       info.className = "movie-info";
@@ -95,19 +104,20 @@ document.addEventListener("DOMContentLoaded", () => {
       
       const year = document.createElement("div");
       year.className = "movie-year";
-      year.textContent = movie.year || "Unknown";
+      year.textContent = movie.year || "----";
       
       info.appendChild(title);
       info.appendChild(year);
       card.appendChild(img);
       card.appendChild(info);
       
-      card.addEventListener("click", () => openModal(movie));
+      card.addEventListener("click", () => openInspector(movie, card));
       moviesGrid.appendChild(card);
     });
   }
 
-  function openModal(movie) {
+  function openInspector(movie, sourceElement) {
+    previousFocusElement = sourceElement; // Save focus
     currentMovieId = movie.id;
     currentGeneratedUrl = null;
     selectedReferenceUrl = null;
@@ -117,81 +127,125 @@ document.addEventListener("DOMContentLoaded", () => {
     // Reset generation state
     newPosterImg.classList.add("hidden");
     newPosterImg.src = "";
+    newPosterPlaceholder.classList.remove("hidden");
     newPosterPlaceholder.classList.add("active");
     loadingOverlay.classList.add("hidden");
     promptInput.value = "";
     applyBtn.classList.add("hidden");
-    generateBtn.textContent = "Generate Image";
+    generateBtn.textContent = "EXECUTE RENDER";
     generateBtn.disabled = false;
     
     // Load alternative posters
-    referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>Loading posters...</p>";
+    referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>Syncing variants...</p>";
     fetch(`/api/movies/${movie.id}/posters`)
       .then(r => r.json())
       .then(posters => {
         referenceGallery.innerHTML = "";
         
-        const addReferenceItem = (url, isSelected) => {
-          const img = document.createElement("img");
-          img.src = url;
-          img.className = "reference-item" + (isSelected ? " selected" : "");
+        const addReferenceItem = (url, isSelected, index) => {
+          const btn = document.createElement("button");
+          btn.className = "reference-item" + (isSelected ? " selected" : "");
+          btn.setAttribute("role", "radio");
+          btn.setAttribute("aria-checked", isSelected ? "true" : "false");
+          btn.setAttribute("aria-label", "Base poster variant " + index);
           
-          img.addEventListener("click", () => {
-             document.querySelectorAll(".reference-item").forEach(el => el.classList.remove("selected"));
+          btn.style.backgroundImage = `url('${url}')`;
+          btn.style.backgroundSize = 'cover';
+          
+          btn.addEventListener("click", () => {
+             document.querySelectorAll(".reference-item").forEach(el => {
+               el.classList.remove("selected");
+               el.setAttribute("aria-checked", "false");
+             });
              if (selectedReferenceUrl === url) {
                selectedReferenceUrl = null; 
                currentPosterImg.src = movie.poster_url || "";
              } else {
-               img.classList.add("selected");
+               btn.classList.add("selected");
+               btn.setAttribute("aria-checked", "true");
                selectedReferenceUrl = url;
                currentPosterImg.src = url;
              }
           });
-          referenceGallery.appendChild(img);
+          referenceGallery.appendChild(btn);
         };
         
         // Always place the active movie poster first and pre-select it
         if (movie.poster_url) {
-          addReferenceItem(movie.poster_url, true);
+          addReferenceItem(movie.poster_url, true, 1);
           selectedReferenceUrl = movie.poster_url;
         }
 
+        let idx = 2;
         posters.forEach(p => {
           if (p.url !== movie.poster_url) {
-            addReferenceItem(p.url, false);
+            addReferenceItem(p.url, false, idx++);
           }
         });
       })
       .catch(e => {
-        referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>No reference posters available.</p>";
+        referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>No reference variants available.</p>";
       });
 
-    modal.classList.add("active");
+    inspectorPanel.classList.add("active");
+    inspectorBackdrop.classList.add("active");
+    inspectorPanel.setAttribute("aria-hidden", "false");
+    
+    // Set focus to the first focusable element inside the inspector
+    setTimeout(() => {
+        closeBtn.focus();
+    }, 100);
   }
 
-  closeBtn.addEventListener("click", () => {
-    modal.classList.remove("active");
-  });
-  
-  // Close on backdrop click
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      modal.classList.remove("active");
+  function closeInspector() {
+    inspectorPanel.classList.remove("active");
+    inspectorBackdrop.classList.remove("active");
+    inspectorPanel.setAttribute("aria-hidden", "true");
+    
+    if (previousFocusElement) {
+      previousFocusElement.focus();
     }
+  }
+
+  closeBtn.addEventListener("click", closeInspector);
+  inspectorBackdrop.addEventListener("click", closeInspector);
+  
+  // Trap Focus and Escape key to close
+  inspectorPanel.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+          closeInspector();
+      }
+      
+      if (e.key === 'Tab') {
+          const focusableElements = inspectorPanel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+          const firstElement = focusableElements[0];
+          const lastElement = focusableElements[focusableElements.length - 1];
+
+          if (e.shiftKey) { 
+              if (document.activeElement === firstElement) {
+                  lastElement.focus();
+                  e.preventDefault();
+              }
+          } else { 
+              if (document.activeElement === lastElement) {
+                  firstElement.focus();
+                  e.preventDefault();
+              }
+          }
+      }
   });
 
   generateBtn.addEventListener("click", async () => {
     const prompt = promptInput.value.trim();
     if (!prompt) {
-      alert("Please enter a prompt for the AI.");
+      alert("Please provide explicit visual parameters.");
       return;
     }
 
-    // Set loading state
     loadingOverlay.classList.remove("hidden");
     newPosterPlaceholder.classList.remove("active");
     generateBtn.disabled = true;
-    generateBtn.textContent = "Generating...";
+    generateBtn.textContent = "PROCESSING...";
 
     try {
       const payload = { movie_id: currentMovieId, prompt };
@@ -213,16 +267,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       currentGeneratedUrl = data.image_url;
       
-      // Update new poster image
       newPosterImg.src = currentGeneratedUrl;
-      newPosterImg.classList.remove("hidden");
-      applyBtn.classList.remove("hidden");
-      generateBtn.textContent = "Generate Again";
-
+      newPosterImg.onload = () => {
+         newPosterImg.classList.remove("hidden");
+         applyBtn.classList.remove("hidden");
+         generateBtn.textContent = "NEW ITERATION";
+         applyBtn.focus(); // Shift focus down to apply
+      }
     } catch (e) {
-      alert("Error: " + e.message);
+      alert("ERR: " + e.message);
       newPosterPlaceholder.classList.add("active");
-      generateBtn.textContent = "Generate Image";
+      generateBtn.textContent = "EXECUTE RENDER";
     } finally {
       loadingOverlay.classList.add("hidden");
       generateBtn.disabled = false;
@@ -233,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentGeneratedUrl || !currentMovieId) return;
     
     applyBtn.disabled = true;
-    applyBtn.textContent = "Applying...";
+    applyBtn.textContent = "COMMITTING...";
 
     try {
       const res = await fetch("/api/update_poster", {
@@ -247,15 +302,13 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(err.detail || "Update failed");
       }
       
-      alert("Success! The new poster has been applied to Plex.");
-      
-      // Update UI
+      alert("COMMIT SUCCESS // Active poster overwritten.");
       currentPosterImg.src = currentGeneratedUrl;
       
     } catch (e) {
-      alert("Error applying poster: " + e.message);
+      alert("COMMIT ERR: " + e.message);
     } finally {
-      applyBtn.textContent = "Apply to Plex";
+      applyBtn.textContent = "COMMIT TO SERVER";
       applyBtn.disabled = false;
     }
   });

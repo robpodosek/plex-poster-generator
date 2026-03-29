@@ -3,91 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plex AI Poster Generator</title>
-  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Plex Poster Editor | Studio</title>
+  <!-- Space Grotesk for Industrial Cinema Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header class="app-header">
+  <header class="app-header" aria-label="Main Navigation">
     <div class="logo">
-      <svg viewBox="0 0 458 458" width="30" height="30" fill="#e5a00d">
+      <svg aria-label="Plex Logo" viewBox="0 0 458 458" width="24" height="24" fill="var(--plex-amber)" role="img">
         <path d="M0,0h458v458H0V0z M229,114.5L114.5,229L229,343.5L343.5,229L229,114.5z"/>
       </svg>
-      <h1>Plex Poster AI</h1>
+      <h1>PLEX // STUDIO</h1>
     </div>
     
-    <div class="server-status" id="server-status">
+    <div class="server-status" id="server-status" aria-live="polite">
       Checking connection...
     </div>
   </header>
 
   <main class="container">
-    <section class="controls">
+    <section class="controls" aria-label="Library Controls">
       <div class="select-wrapper">
-        <label for="library-select">Select Library</label>
-        <select id="library-select" disabled>
+        <label for="library-select">SOURCE LIBRARY</label>
+        <select id="library-select" disabled aria-busy="true">
           <option>Loading libraries...</option>
         </select>
       </div>
     </section>
 
-    <section class="movies-grid" id="movies-grid">
-      <!-- Movies will be injected here -->
+    <!-- Movies will be injected as <button class="movie-card"> -->
+    <section class="movies-grid" id="movies-grid" aria-label="Movie Grid">
+      <!-- Loading placeholders -->
     </section>
   </main>
 
-  <!-- Modal -->
-  <div class="modal-backdrop" id="poster-modal">
-    <div class="modal-content glass-modal">
-      <button class="close-btn" id="close-modal">&times;</button>
-      
-      <div class="modal-body horizontal-layout">
-        <div class="modal-left-panel">
-          <h2 id="modal-movie-title">Movie Title</h2>
-          <p class="subtitle">Describe the edits you want to apply while preserving the style.</p>
-          
-          <div class="reference-posters-label">Select Base Configuration (Optional)</div>
-          <div class="reference-gallery" id="reference-gallery">
+  <!-- Slide-in Inspector Panel (replacing the modal) -->
+  <div class="inspector-backdrop" id="inspector-backdrop" aria-hidden="true"></div>
+  <aside class="inspector-panel" id="inspector-panel" role="dialog" aria-modal="true" aria-labelledby="modal-movie-title" aria-hidden="true" tabindex="-1">
+    
+    <header class="inspector-header">
+      <h2 id="modal-movie-title">TITLE</h2>
+      <button class="close-btn" id="close-inspector" aria-label="Close Inspector">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </header>
+
+    <div class="inspector-body">
+      <div class="inspector-top-row">
+        <div class="inspector-left">
+          <div class="panel-section prompt-section">
+            <label class="section-label" id="instruction-label">GENERATION PARAMETERS</label>
+            <p class="subtitle">Specify exact visual manipulation directives.</p>
+            <textarea id="prompt-input" rows="4" placeholder="e.g. Desaturate background, isolate subject, add highly contrasted grit..." aria-labelledby="instruction-label"></textarea>
+          </div>
+        </div>
+
+        <div class="inspector-right">
+          <div class="panel-section visual-diff">
+            <label class="section-label">OUTPUT RENDER</label>
+            <div class="posters-comparison">
+              <div class="poster-column">
+                <span class="poster-badge">SOURCE</span>
+                <div class="poster-frame source-frame">
+                  <img id="current-poster-img" src="" alt="Base Source Poster" />
+                </div>
+              </div>
+              
+              <div class="poster-column">
+                <span class="poster-badge" aria-live="polite" id="render-status-badge">TARGET</span>
+                <div class="poster-frame target-frame" id="new-poster-frame">
+                  <div class="placeholder active" id="new-poster-placeholder">
+                    AWAITING INPUT
+                  </div>
+                  <img id="new-poster-img" src="" alt="Generated AI Poster" class="hidden" />
+                  <div class="loading-overlay hidden" id="loading-overlay" role="status" aria-live="assertive">
+                    <div class="scanning-bar"></div>
+                    <p>PROCESSING TENSOR</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-bottom-row">
+        <div class="panel-section">
+          <label class="section-label">BASE PLATES</label>
+          <div class="reference-gallery" id="reference-gallery" role="radiogroup" aria-label="Base Reference Posters">
             <!-- Alternative posters injected here -->
           </div>
-
-          <textarea id="prompt-input" rows="4" placeholder="e.g., Change the background to neon pink while keeping everything else exactly the same..."></textarea>
-          
-          <div class="actions">
-            <button class="btn btn-primary" id="generate-btn">Generate AI Edit</button>
-            <button class="btn btn-success hidden" id="apply-btn">Apply to Plex</button>
-          </div>
         </div>
-
-        <div class="modal-right-panel">
-          <div class="posters-comparison">
-            <div class="poster-column">
-              <div class="poster-badge">Original Base</div>
-              <div class="poster-frame">
-                <img id="current-poster-img" src="" alt="Current Poster" />
-              </div>
-            </div>
-            
-            <div class="poster-column">
-              <div class="poster-badge">AI Edit Preview</div>
-              <div class="poster-frame" id="new-poster-frame">
-                <div class="placeholder active" id="new-poster-placeholder">
-                  Ready for instructions
-                </div>
-                <img id="new-poster-img" src="" alt="New Poster" class="hidden" />
-                <div class="loading-overlay hidden" id="loading-overlay">
-                  <div class="spinner"></div>
-                  <p>Processing image...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
-  </div>
+
+    <footer class="inspector-footer">
+      <button class="btn btn-primary" id="generate-btn">EXECUTE RENDER</button>
+      <button class="btn btn-success hidden" id="apply-btn">COMMIT TO SERVER</button>
+    </footer>
+  </aside>
 
   <script src="app.js"></script>
 </body>
