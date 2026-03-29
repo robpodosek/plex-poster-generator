@@ -39,42 +39,49 @@
 
   <!-- Modal -->
   <div class="modal-backdrop" id="poster-modal">
-    <div class="modal-content">
+    <div class="modal-content glass-modal">
       <button class="close-btn" id="close-modal">&times;</button>
       
-      <div class="modal-body">
-        <div class="posters-view">
-          <div class="poster-column">
-            <h3>Current Poster</h3>
-            <div class="poster-frame">
-              <img id="current-poster-img" src="" alt="Current Poster" />
-            </div>
-          </div>
+      <div class="modal-body horizontal-layout">
+        <div class="modal-left-panel">
+          <h2 id="modal-movie-title">Movie Title</h2>
+          <p class="subtitle">Describe the edits you want to apply while preserving the style.</p>
           
-          <div class="poster-column">
-            <h3>New Poster</h3>
-            <div class="poster-frame" id="new-poster-frame">
-              <div class="placeholder active" id="new-poster-placeholder">
-                AI Driven Imagination
-              </div>
-              <img id="new-poster-img" src="" alt="New Poster" class="hidden" />
-              <div class="loading-overlay hidden" id="loading-overlay">
-                <div class="spinner"></div>
-                <p>Generating artwork...</p>
-              </div>
-            </div>
+          <div class="reference-posters-label">Select Base Configuration (Optional)</div>
+          <div class="reference-gallery" id="reference-gallery">
+            <!-- Alternative posters injected here -->
+          </div>
+
+          <textarea id="prompt-input" rows="4" placeholder="e.g., Change the background to neon pink while keeping everything else exactly the same..."></textarea>
+          
+          <div class="actions">
+            <button class="btn btn-primary" id="generate-btn">Generate AI Edit</button>
+            <button class="btn btn-success hidden" id="apply-btn">Apply to Plex</button>
           </div>
         </div>
 
-        <div class="generation-controls">
-          <h2 id="modal-movie-title">Movie Title</h2>
-          <p class="subtitle">Provide a creative prompt for the AI to redesign this movie's poster.</p>
-          
-          <textarea id="prompt-input" rows="3" placeholder="e.g., A minimalist vector art interpretation with neon colors..."></textarea>
-          
-          <div class="actions">
-            <button class="btn btn-primary" id="generate-btn">Generate Image</button>
-            <button class="btn btn-success hidden" id="apply-btn">Apply to Plex</button>
+        <div class="modal-right-panel">
+          <div class="posters-comparison">
+            <div class="poster-column">
+              <div class="poster-badge">Original Base</div>
+              <div class="poster-frame">
+                <img id="current-poster-img" src="" alt="Current Poster" />
+              </div>
+            </div>
+            
+            <div class="poster-column">
+              <div class="poster-badge">AI Edit Preview</div>
+              <div class="poster-frame" id="new-poster-frame">
+                <div class="placeholder active" id="new-poster-placeholder">
+                  Ready for instructions
+                </div>
+                <img id="new-poster-img" src="" alt="New Poster" class="hidden" />
+                <div class="loading-overlay hidden" id="loading-overlay">
+                  <div class="spinner"></div>
+                  <p>Processing image...</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -14,9 +14,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const promptInput = document.getElementById("prompt-input");
   const generateBtn = document.getElementById("generate-btn");
   const applyBtn = document.getElementById("apply-btn");
+  const referenceGallery = document.getElementById("reference-gallery");
   
   let currentMovieId = null;
   let currentGeneratedUrl = null;
+  let selectedReferenceUrl = null;
 
   // Initialize
   checkStatus();
@@ -108,6 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function openModal(movie) {
     currentMovieId = movie.id;
     currentGeneratedUrl = null;
+    selectedReferenceUrl = null;
     modalTitle.textContent = movie.title;
     currentPosterImg.src = movie.poster_url || "";
     
@@ -121,6 +124,36 @@ document.addEventListener("DOMContentLoaded", () => {
     generateBtn.textContent = "Generate Image";
     generateBtn.disabled = false;
     
+    // Load alternative posters
+    referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>Loading posters...</p>";
+    fetch(`/api/movies/${movie.id}/posters`)
+      .then(r => r.json())
+      .then(posters => {
+        referenceGallery.innerHTML = "";
+        posters.forEach(p => {
+          const img = document.createElement("img");
+          img.src = p.url;
+          img.className = "reference-item";
+          img.addEventListener("click", () => {
+             document.querySelectorAll(".reference-item").forEach(el => el.classList.remove("selected"));
+             if (selectedReferenceUrl === p.url) {
+               // Deselect
+               selectedReferenceUrl = null; 
+               currentPosterImg.src = movie.poster_url || "";
+             } else {
+               // Select
+               img.classList.add("selected");
+               selectedReferenceUrl = p.url;
+               currentPosterImg.src = p.url;
+             }
+          });
+          referenceGallery.appendChild(img);
+        });
+      })
+      .catch(e => {
+        referenceGallery.innerHTML = "<p style='color:var(--text-muted); font-size: 0.8rem;'>No reference posters available.</p>";
+      });
+
     modal.classList.add("active");
   }
 
@@ -149,10 +182,15 @@ document.addEventListener("DOMContentLoaded", () => {
     generateBtn.textContent = "Generating...";
 
     try {
+      const payload = { movie_id: currentMovieId, prompt };
+      if (selectedReferenceUrl) {
+        payload.reference_poster_url = selectedReferenceUrl;
+      }
+
       const res = await fetch("/api/generate_poster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ movie_id: currentMovieId, prompt })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
