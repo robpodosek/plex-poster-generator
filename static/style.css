@@ -245,12 +245,35 @@ select:disabled {
 }
 
 .inspector-body {
-  padding: 1rem 1.5rem; /* Reduced */
-  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  overflow-y: hidden; /* Prefer internal scrolling if needed */
   flex: 1;
   display: flex;
+  flex-direction: row; /* Side-by-side */
+  gap: 2rem;
+}
+
+.inspector-left {
+  flex: 0 0 320px; /* Fixed width for controls */
+  display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Tighter vertical spacing */
+  gap: 1.5rem;
+}
+
+.inspector-right {
+  flex: 1; /* Takes remaining space */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.prompt-section {
+  flex: 0 0 auto;
+}
+
+.prompt-section textarea {
+  min-height: 120px; /* Half height as per user (was 240+ originally) */
+  max-height: 180px;
 }
 
 .panel-section {
@@ -259,13 +282,8 @@ select:disabled {
   min-height: 0;
 }
 
-.prompt-section textarea {
-  min-height: 50px; /* Highly compact */
-  max-height: 70px;
-}
-
 .visual-diff {
-  flex: 1; /* Renders take all available priority space */
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -307,8 +325,9 @@ textarea:focus {
 /* Base Plates Reference Gallery */
 .reference-gallery {
   display: flex;
-  overflow-x: auto;
-  gap: 0.75rem;
+  flex-wrap: wrap; /* Wrap thumbnails in the left column */
+  gap: 0.5rem;
+  overflow-y: auto;
   padding-bottom: 0.5rem;
 }
 
@@ -318,14 +337,14 @@ textarea:focus {
 .reference-gallery::-webkit-scrollbar-thumb:hover { background: var(--plex-amber); }
 
 .reference-item {
-  width: 50px; /* Smaller thumbnails as they are low priority */
+  width: 65px; /* Slightly larger thumbnails for wrap layout */
   aspect-ratio: 2/3;
   object-fit: cover;
   border: 1px solid transparent;
   border-radius: var(--border-radius);
   cursor: pointer;
   transition: var(--transition);
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .reference-item:hover, .reference-item:focus-visible {
@@ -365,7 +384,7 @@ textarea:focus {
 .poster-frame {
   height: 100%;
   aspect-ratio: 2/3;
-  max-height: 45vh; /* Balanced for 730px height viewports */
+  max-height: 60vh; /* Re-increase height for better visibility on wide layouts */
   background: #000;
   border: 1px solid var(--border);
   border-radius: var(--border-radius);
