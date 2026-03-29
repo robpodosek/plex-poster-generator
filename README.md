@@ -2,7 +2,7 @@
 
 Transform your Plex library with high-quality, AI-generated custom movie posters. This tool uses Google's **Imagen 3** (via Gemini API) to create stunning alternative artwork tailored to your favorite films, and it synchronizes them directly back to your Plex Media Server.
 
-![Custom Poster Demo](https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000&auto=format&fit=crop)
+![Custom Poster Demo](demo.webp)
 
 ## ✨ Features
 
