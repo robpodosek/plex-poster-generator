@@ -49,25 +49,35 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) throw new Error("Failed to load");
       const libs = await res.json();
       
-      librarySelect.innerHTML = "<option value=''>AWAITING SELECTION...</option>";
+      librarySelect.innerHTML = "<option value='' disabled>AWAITING SELECTION...</option>";
+      let moviesLibId = null;
+
       libs.forEach(lib => {
         const opt = document.createElement("option");
         opt.value = lib.id;
         opt.textContent = lib.title;
+        if (lib.title === "Movies") {
+          opt.selected = true;
+          moviesLibId = lib.id;
+        }
         librarySelect.appendChild(opt);
       });
+
       librarySelect.disabled = false;
       librarySelect.setAttribute("aria-busy", "false");
+
+      // Auto-load if Movies was found
+      if (moviesLibId) {
+        loadMovies(moviesLibId);
+      }
     } catch (err) {
       librarySelect.innerHTML = "<option>ERR // LOAD FAILED</option>";
       librarySelect.setAttribute("aria-busy", "false");
     }
   }
 
-  librarySelect.addEventListener("change", async (e) => {
-    const libId = e.target.value;
+  async function loadMovies(libId) {
     if (!libId) return;
-    
     moviesGrid.innerHTML = "<p>Retrieving database records...</p>";
     moviesGrid.setAttribute("aria-busy", "true");
     try {
@@ -79,6 +89,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       moviesGrid.setAttribute("aria-busy", "false");
     }
+  }
+
+  librarySelect.addEventListener("change", (e) => {
+    loadMovies(e.target.value);
   });
 
   function renderMovies(movies) {

@@ -56,53 +56,48 @@
     </header>
 
     <div class="inspector-body">
-      <div class="inspector-top-row">
-        <div class="inspector-left">
-          <div class="panel-section prompt-section">
-            <label class="section-label" id="instruction-label">GENERATION PARAMETERS</label>
-            <p class="subtitle">Specify exact visual manipulation directives.</p>
-            <textarea id="prompt-input" rows="4" placeholder="e.g. Desaturate background, isolate subject, add highly contrasted grit..." aria-labelledby="instruction-label"></textarea>
-          </div>
-        </div>
+      <!-- High Priority: Task Input -->
+      <div class="panel-section prompt-section">
+        <label class="section-label">GENERATION PARAMETERS</label>
+        <textarea id="prompt-input" rows="2" placeholder="e.g. Desaturate background, isolate subject, add highly contrasted grit..." aria-label="Visual manipulation prompt"></textarea>
+      </div>
 
-        <div class="inspector-right">
-          <div class="panel-section visual-diff">
-            <label class="section-label">OUTPUT RENDER</label>
-            <div class="posters-comparison">
-              <div class="poster-column">
-                <span class="poster-badge">SOURCE</span>
-                <div class="poster-frame source-frame">
-                  <img id="current-poster-img" src="" alt="Base Source Poster" />
-                </div>
+      <!-- High Priority: Result Output -->
+      <div class="panel-section visual-diff">
+        <label class="section-label">OUTPUT RENDER / COMPARISON</label>
+        <div class="posters-comparison">
+          <div class="poster-column">
+            <span class="poster-badge">SOURCE</span>
+            <div class="poster-frame source-frame">
+              <img id="current-poster-img" src="" alt="Base Source Poster" />
+            </div>
+          </div>
+          
+          <div class="poster-column">
+            <span class="poster-badge" aria-live="polite" id="render-status-badge">TARGET</span>
+            <div class="poster-frame target-frame" id="new-poster-frame">
+              <div class="placeholder active" id="new-poster-placeholder">
+                AWAITING INPUT
               </div>
-              
-              <div class="poster-column">
-                <span class="poster-badge" aria-live="polite" id="render-status-badge">TARGET</span>
-                <div class="poster-frame target-frame" id="new-poster-frame">
-                  <div class="placeholder active" id="new-poster-placeholder">
-                    AWAITING INPUT
-                  </div>
-                  <img id="new-poster-img" src="" alt="Generated AI Poster" class="hidden" />
-                  <div class="loading-overlay hidden" id="loading-overlay" role="status" aria-live="assertive">
-                    <div class="scanning-bar"></div>
-                    <p>PROCESSING TENSOR</p>
-                  </div>
-                </div>
+              <img id="new-poster-img" src="" alt="Generated AI Poster" class="hidden" />
+              <div class="loading-overlay hidden" id="loading-overlay" role="status" aria-live="assertive">
+                <div class="scanning-bar"></div>
+                <p>PROCESSING TENSOR</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="inspector-bottom-row">
-        <div class="panel-section">
-          <label class="section-label">BASE PLATES</label>
-          <div class="reference-gallery" id="reference-gallery" role="radiogroup" aria-label="Base Reference Posters">
-            <!-- Alternative posters injected here -->
-          </div>
+      <!-- Low Priority: Secondary Selection -->
+      <div class="panel-section base-plates-section">
+        <label class="section-label">BASE PLATES (OPTIONAL)</label>
+        <div class="reference-gallery" id="reference-gallery" role="radiogroup" aria-label="Base Reference Posters">
+          <!-- Alternative posters injected here -->
         </div>
       </div>
     </div>
+
 
     <footer class="inspector-footer">
       <button class="btn btn-primary" id="generate-btn">EXECUTE RENDER</button>

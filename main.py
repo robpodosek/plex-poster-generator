@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
+from typing import Optional
 import base64
 import uuid
 import requests
@@ -127,12 +128,13 @@ def get_movie_posters(movie_id: int):
     except Exception as e:
         print(e)
         raise HTTPException(status_code=404, detail="Movie not found in Plex")
+    
 
 
 class GenerateRequest(BaseModel):
     movie_id: int
     prompt: str
-    reference_poster_url: str | None = None
+    reference_poster_url: Optional[str] = None
 
 @app.post("/api/generate_poster")
 async def generate_poster(req: GenerateRequest):
@@ -156,7 +158,7 @@ async def generate_poster(req: GenerateRequest):
 
             # Emulating Image-to-Image with Gemini Pro Vision
             vision_response = await openai_client.chat.completions.create(
-                model="gemini-2.5-pro",
+                model="gemini-3-pro-preview",
                 messages=[
                     {
                         "role": "system",
@@ -172,7 +174,7 @@ async def generate_poster(req: GenerateRequest):
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{img_b64}"
+                                     "url": f"data:image/jpeg;base64,{img_b64}"
                                 }
                             }
                         ]
@@ -181,7 +183,7 @@ async def generate_poster(req: GenerateRequest):
                 temperature=0.2,
             )
             enhanced_prompt_details = vision_response.choices[0].message.content.strip()
-            print(f"Gemini Vision Analysis: {enhanced_prompt_details}")
+            print(f"Gemini 3 Vision Analysis: {enhanced_prompt_details}")
         except RequestException as e:
             print(f"Failed to fetch reference image over network: {e}")
         except Exception as e:
@@ -196,21 +198,42 @@ async def generate_poster(req: GenerateRequest):
     enhanced_prompt += " Do NOT include: poorly drawn text, gibberish, deformities, bad anatomy, watermarks, distorted faces, multiple titles."
     
     try:
-        response = await openai_client.images.generate(
-            model="imagen-4.0-fast-generate-001",
-            prompt=enhanced_prompt,
-            response_format="b64_json",
-            n=1,
+        # Refactored for Gemini 3 multimodal generation
+        response = await openai_client.chat.completions.create(
+            model="gemini-3-pro-image-preview",
+            messages=[
+                {"role": "user", "content": enhanced_prompt}
+            ],
             extra_body={
+                "response_modalities": ["TEXT", "IMAGE"],
                 "aspectRatio": "3:4",
                 "negativePrompt": "poorly drawn text, gibberish, deformities, bad anatomy, watermarks, distorted faces, multiple titles"
             }
         )
         
-        if not response.data or len(response.data) == 0:
-            raise HTTPException(status_code=400, detail="Image generation failed. This is usually caused by the prompt triggering Gemini's safety filters (e.g., political figures, real people).")
+        # Extract image from multimodal response
+        # Gemini usually returns images in a specialized field or embedded as data URIs in the content
+        image_b64 = None
+        
+        # Check for images field (common in some OpenAI-compatible gateways for Gemini)
+        if hasattr(response, "images") and response.images:
+            image_b64 = response.images[0]
+        # Or check the content blocks if it's following the standard multimodal chat schema
+        elif response.choices[0].message.content and "data:image" in response.choices[0].message.content:
+            import re
+            match = re.search(r"data:image/[^;]+;base64,([^\"\'\s>]+)", response.choices[0].message.content)
+            if match:
+                image_b64 = match.group(1)
+        
+        if not image_b64:
+            # Fallback check for raw bytes/b64 in tool_calls or message parts if available
+            # Log full response for debugging if it's a new structure
+            print(f"DEBUG: Response Structure: {response.model_dump_json()}")
+            raise HTTPException(status_code=400, detail="Image generation failed: No image data found in response. See server logs for details.")
             
-        image_b64 = response.data[0].b64_json
+        if image_b64.startswith("data:image"):
+             image_b64 = image_b64.split(",")[1]
+             
         image_data = base64.b64decode(image_b64)
         
         safe_title = "".join([c for c in movie.title if c.isalnum() or c.isspace()]).strip().replace(" ", "_").lower()
@@ -223,7 +246,9 @@ async def generate_poster(req: GenerateRequest):
             
         return {"image_url": f"/generated/{filename}"}
     except Exception as e:
+        print(f"ERROR: Generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 class UpdateRequest(BaseModel):
     movie_id: int
