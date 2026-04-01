@@ -194,42 +194,41 @@ async def generate_poster(req: GenerateRequest):
     else:
         enhanced_prompt = f"A high-quality, professional movie poster for '{movie.title}'. {req.prompt}."
     
-    # Negative constraints directly in prompt fallback for endpoints that drop kwargs
-    enhanced_prompt += " Do NOT include: poorly drawn text, gibberish, deformities, bad anatomy, watermarks, distorted faces, multiple titles."
+    # Instruction to return image as Base64 in text to bypass binary MIME crashes in the bridge
+    enhanced_prompt += " Format as a vertical movie poster (2:3 aspect ratio). Output THE FINAL IMAGE as a Base64-encoded Data URI string (e.g. data:image/jpeg;base64,...) within your text response. Do NOT include: poorly drawn text, gibberish, deformities, bad anatomy, watermarks, distorted faces."
     
     try:
-        # Refactored for Gemini 3 multimodal generation
+        # Reverted to OpenAI client (Fixed 'Unhandled MIME type' 400 error by using text-based Base64)
         response = await openai_client.chat.completions.create(
             model="gemini-3-pro-image-preview",
             messages=[
                 {"role": "user", "content": enhanced_prompt}
-            ],
-            extra_body={
-                "response_modalities": ["TEXT", "IMAGE"],
-                "aspectRatio": "3:4",
-                "negativePrompt": "poorly drawn text, gibberish, deformities, bad anatomy, watermarks, distorted faces, multiple titles"
-            }
+            ]
         )
         
-        # Extract image from multimodal response
-        # Gemini usually returns images in a specialized field or embedded as data URIs in the content
+        # Extract image from text response (Base64-in-text approach)
         image_b64 = None
+        content = response.choices[0].message.content
         
-        # Check for images field (common in some OpenAI-compatible gateways for Gemini)
-        if hasattr(response, "images") and response.images:
-            image_b64 = response.images[0]
-        # Or check the content blocks if it's following the standard multimodal chat schema
-        elif response.choices[0].message.content and "data:image" in response.choices[0].message.content:
+        if content and "data:image" in content:
             import re
-            match = re.search(r"data:image/[^;]+;base64,([^\"\'\s>]+)", response.choices[0].message.content)
+            match = re.search(r"data:image/[^;]+;base64,([^\"\'\s>]+)", content)
             if match:
                 image_b64 = match.group(1)
         
+        # Fallback: Check if the model ignored instructions and sent a multimodal part anyway 
+        # (Though we moved to text-first to avoid the bridge error, some gateways might catch it)
+        if not image_b64 and hasattr(response, "images") and response.images:
+             image_b64 = response.images[0]
+             
         if not image_b64:
-            # Fallback check for raw bytes/b64 in tool_calls or message parts if available
-            # Log full response for debugging if it's a new structure
-            print(f"DEBUG: Response Structure: {response.model_dump_json()}")
-            raise HTTPException(status_code=400, detail="Image generation failed: No image data found in response. See server logs for details.")
+            # If still nothing, it might be a raw b64 string without the URI prefix
+            if content and len(content.strip()) > 1000 and not any(c in content.strip()[:100] for c in " \n\t"):
+                 image_b64 = content.strip()
+        
+        if not image_b64:
+            print(f"DEBUG: Content Received: {content[:500]}...")
+            raise HTTPException(status_code=400, detail="Image generation failed: No Base64 image data found in ChatCompletion response.")
             
         if image_b64.startswith("data:image"):
              image_b64 = image_b64.split(",")[1]
