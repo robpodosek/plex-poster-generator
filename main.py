@@ -1,19 +1,25 @@
 import os
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
-from typing import Optional
 import base64
 import uuid
 import requests
 from requests.exceptions import RequestException
+from fastapi import FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from plexapi.server import PlexServer
 from openai import AsyncOpenAI
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional
+from pydantic import BaseModel
 from dotenv import load_dotenv
+
+# Configure logging to output to console
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger("plex-studio")
 
 load_dotenv(override=True)
 
@@ -23,14 +29,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 missing = [name for name, val in [("PLEX_URL", PLEX_URL), ("PLEX_TOKEN", PLEX_TOKEN), ("GEMINI_API_KEY", GEMINI_API_KEY)] if not val]
 if missing:
-    print(f"ERROR: Missing required environment variables: {', '.join(missing)}")
+    logger.error(f"Missing required environment variables: {', '.join(missing)}")
     raise SystemExit(1)
 
 try:
     plex = PlexServer(PLEX_URL, PLEX_TOKEN)
-    plex.library.sections()  # validate the connection actually works
+    plex.library.sections()  # Validate the connection
 except Exception as e:
-    print(f"ERROR: Failed to connect to Plex at {PLEX_URL}: {e}")
+    logger.error(f"Failed to connect to Plex at {PLEX_URL}: {e}")
     raise SystemExit(1)
 
 openai_client = AsyncOpenAI(
@@ -38,11 +44,19 @@ openai_client = AsyncOpenAI(
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
-app = FastAPI(title="Plex Poster Generator")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize application directories
+    Path("static").mkdir(parents=True, exist_ok=True)
+    Path("data/generated").mkdir(parents=True, exist_ok=True)
+    yield
 
-# Serve static files from the 'static' directory
-Path("static").mkdir(parents=True, exist_ok=True)
-Path("data/generated").mkdir(parents=True, exist_ok=True)
+app = FastAPI(
+    title="Plex Poster Generator",
+    description="Studio for custom AI-generated Plex posters.",
+    lifespan=lifespan
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/generated", StaticFiles(directory="data/generated"), name="generated")
 
@@ -80,8 +94,7 @@ def get_movies(library_id: str):
     except Exception:
         raise HTTPException(status_code=404, detail="Library not found")
 
-    # Fetch recently added movies or all movies (we'll limit to 50 for performance preview)
-    # TBD: In a real app we might paginate or search
+    # TBD: In a real app we might paginate or search. Currently limits to default fetch.
     movies = section.all()
     
     results = []
@@ -126,10 +139,27 @@ def get_movie_posters(movie_id: int):
             })
         return results
     except Exception as e:
-        print(e)
+        logger.error(f"Error fetching posters for movie {movie_id}: {e}")
         raise HTTPException(status_code=404, detail="Movie not found in Plex")
     
-
+def extract_image_data(content: str) -> Optional[str]:
+    """Extract Base64 image data from model response."""
+    if not content:
+        return None
+    
+    # Check for direct Data URI
+    import re
+    match = re.search(r"data:image/[^;]+;base64,([^\"\'\s>]+)", content)
+    if match:
+        return match.group(1)
+    
+    # Fallback to raw Base64 if no prefix
+    # Simple heuristic: long string without whitespace
+    stripped = content.strip()
+    if len(stripped) > 1000 and not any(c in stripped[:100] for c in " \n\t"):
+        return stripped
+    
+    return None
 
 class GenerateRequest(BaseModel):
     movie_id: int
@@ -206,33 +236,17 @@ async def generate_poster(req: GenerateRequest):
             ]
         )
         
-        # Extract image from text response (Base64-in-text approach)
-        image_b64 = None
+        # Extract image from text response
         content = response.choices[0].message.content
-        
-        if content and "data:image" in content:
-            import re
-            match = re.search(r"data:image/[^;]+;base64,([^\"\'\s>]+)", content)
-            if match:
-                image_b64 = match.group(1)
-        
-        # Fallback: Check if the model ignored instructions and sent a multimodal part anyway 
-        # (Though we moved to text-first to avoid the bridge error, some gateways might catch it)
-        if not image_b64 and hasattr(response, "images") and response.images:
-             image_b64 = response.images[0]
-             
-        if not image_b64:
-            # If still nothing, it might be a raw b64 string without the URI prefix
-            if content and len(content.strip()) > 1000 and not any(c in content.strip()[:100] for c in " \n\t"):
-                 image_b64 = content.strip()
+        image_b64 = extract_image_data(content)
         
         if not image_b64:
-            print(f"DEBUG: Content Received: {content[:500]}...")
-            raise HTTPException(status_code=400, detail="Image generation failed: No Base64 image data found in ChatCompletion response.")
+            logger.debug(f"Raw Model Content: {content[:500]}...")
+            raise HTTPException(
+                status_code=400, 
+                detail="Image generation failed: No valid image data found in response."
+            )
             
-        if image_b64.startswith("data:image"):
-             image_b64 = image_b64.split(",")[1]
-             
         image_data = base64.b64decode(image_b64)
         
         safe_title = "".join([c for c in movie.title if c.isalnum() or c.isspace()]).strip().replace(" ", "_").lower()
@@ -245,7 +259,7 @@ async def generate_poster(req: GenerateRequest):
             
         return {"image_url": f"/generated/{filename}"}
     except Exception as e:
-        print(f"ERROR: Generation failed: {e}")
+        logger.error(f"Generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

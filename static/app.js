@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentMovieId = null;
   let currentGeneratedUrl = null;
   let selectedReferenceUrl = null;
-  let previousFocusElement = null; // for Focus Trap
+  let previousFocusElement = null; 
 
   // Initialize
   checkStatus();
@@ -158,10 +158,10 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const addReferenceItem = (url, isSelected, index) => {
           const btn = document.createElement("button");
-          btn.className = "reference-item" + (isSelected ? " selected" : "");
+          btn.className = `reference-item ${isSelected ? "selected" : ""}`;
           btn.setAttribute("role", "radio");
           btn.setAttribute("aria-checked", isSelected ? "true" : "false");
-          btn.setAttribute("aria-label", "Base poster variant " + index);
+          btn.setAttribute("aria-label", `Base poster variant ${index}`);
           
           btn.style.backgroundImage = `url('${url}')`;
           btn.style.backgroundSize = 'cover';
@@ -300,7 +300,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   applyBtn.addEventListener("click", async () => {
     if (!currentGeneratedUrl || !currentMovieId) return;
-    
     applyBtn.disabled = true;
     applyBtn.textContent = "COMMITTING...";
 
