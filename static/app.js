@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/api/status");
       const data = await res.json();
-      if (data.plex_connected && data.openai_configured) {
+      if (data.plex_connected && data.gemini_configured) {
         serverStatus.textContent = "CONNECTED // ONLINE";
         serverStatus.className = "server-status connected";
       } else {
@@ -209,6 +209,10 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
         closeBtn.focus();
     }, 100);
+    
+    // Clear previous enhanced prompt if any
+    const existingPromptHint = document.getElementById("enhanced-prompt-hint");
+    if (existingPromptHint) existingPromptHint.remove();
   }
 
   function closeInspector() {
@@ -281,6 +285,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
       currentGeneratedUrl = data.image_url;
       
+      const enhancedPrompt = data.enhanced_prompt;
+      if (enhancedPrompt) {
+          // Visual feedback for "Magic Prompt"
+          let promptHint = document.getElementById("enhanced-prompt-hint");
+          if (!promptHint) {
+              promptHint = document.createElement("div");
+              promptHint.id = "enhanced-prompt-hint";
+              promptHint.style.cssText = "margin-top: 1rem; font-size: 0.7rem; color: var(--text-muted); font-style: italic; border-left: 2px solid var(--plex-amber); padding-left: 0.5rem; animation: fadeIn 0.5s ease-out;";
+              promptInput.parentElement.appendChild(promptHint);
+          }
+          promptHint.textContent = `GEN PROMPT: ${enhancedPrompt.substring(0, 100)}...`;
+      }
+
       newPosterImg.src = currentGeneratedUrl;
       newPosterImg.onload = () => {
          newPosterImg.classList.remove("hidden");
@@ -289,9 +306,9 @@ document.addEventListener("DOMContentLoaded", () => {
          applyBtn.focus(); // Shift focus down to apply
       }
     } catch (e) {
-      alert("ERR: " + e.message);
+      alert("GENERATION ERR: " + e.message + " (Check server logs for details)");
       newPosterPlaceholder.classList.add("active");
-      generateBtn.textContent = "EXECUTE RENDER";
+      generateBtn.textContent = "RETRY RENDER";
     } finally {
       loadingOverlay.classList.add("hidden");
       generateBtn.disabled = false;

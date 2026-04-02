@@ -1,15 +1,20 @@
 :root {
-  /* Industrial Cinema Identity */
-  --plex-bg: #0f0f11;
-  --plex-bg-light: #18181b;
-  --plex-amber: #e5a00d;
-  --plex-amber-hover: #ffb822; /* HSL adjusted for highly visible starkness */
-  --text-main: #f4f4f5;
-  --text-muted: #a1a1aa; /* Ensures 4.5:1 on #18181b */
-  --border: #27272a;
-  --border-focus: #e5a00d;
-  --border-radius: 2px; /* Brutalist/Minimal structural curve */
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Premium Cinematic Identity */
+  --plex-bg: #050507;
+  --plex-bg-elevated: #0d0d12;
+  --plex-bg-glass: rgba(13, 13, 18, 0.7);
+  --plex-amber: #ffb822; /* More vibrant amber */
+  --plex-amber-glow: rgba(255, 184, 34, 0.15);
+  --text-main: #fcfcfc;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: #ffb822;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 16px;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: 12px;
 }
 
 * {
@@ -19,92 +24,98 @@
 }
 
 body {
-  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Inter', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   background-color: var(--plex-bg);
   color: var(--text-main);
-  line-height: 1.5;
+  line-height: 1.6;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* Base Accessibility: Focus Rings */
 *:focus-visible {
   outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
+  outline-offset: 4px;
 }
 
 .app-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 2rem;
-  background-color: var(--plex-bg);
+  padding: 1.25rem 3rem;
+  background-color: var(--plex-bg-glass);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 100;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  z-index: 1000;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .logo h1 {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   color: var(--text-main);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .server-status {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
 }
-.server-status.connected { color: #4ade80; }
-.server-status.error { color: #f87171; }
+.server-status.connected { color: #4ade80; border-color: rgba(74, 222, 128, 0.2); }
+.server-status.error { color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
 
 .container {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 2.5rem 2rem;
+  padding: 4rem 3rem;
 }
 
 .controls {
-  margin-bottom: 3rem;
-  border-left: 2px solid var(--plex-amber);
-  padding-left: 1rem;
+  margin-bottom: 4rem;
 }
 
 .select-wrapper label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
   color: var(--text-muted);
 }
 
 select {
-  background-color: var(--plex-bg-light);
+  background-color: var(--plex-bg-elevated);
   color: var(--text-main);
   border: 1px solid var(--border);
-  padding: 0.75rem 1rem;
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  width: 100%;
-  max-width: 350px;
-  cursor: pointer;
-  outline: none;
+  border-radius: var(--border-radius-md);
+  padding: 1rem 1.5rem;
   font-family: inherit;
-  transition: var(--transition);
+  font-size: 1rem;
+  min-width: 300px;
+  cursor: pointer;
+  transition: var(--transition-fast);
   appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a1a1aa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 1rem top 50%;
-  background-size: 0.65em auto;
+  background-position: right 1rem center;
+  background-size: 1.2rem;
 }
 
 select:focus {
@@ -123,12 +134,12 @@ select:disabled {
 }
 
 .movie-card {
-  background: var(--plex-bg-light);
+  background: var(--plex-bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-md);
   overflow: hidden;
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--transition-slow);
   position: relative;
   text-align: left;
   display: block;
@@ -136,9 +147,9 @@ select:disabled {
 }
 
 .movie-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-8px) scale(1.02);
   border-color: var(--plex-amber);
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--plex-amber-glow);
 }
 
 .movie-poster {
@@ -193,18 +204,19 @@ select:disabled {
   left: 50%;
   transform: translate(-50%, -50%) scale(0.95);
   width: 95%;
-  max-width: 1100px;
-  max-height: 85vh;
-  background: var(--plex-bg);
+  max-width: 1200px;
+  max-height: 90vh;
+  background: var(--plex-bg-elevated);
   border: 1px solid var(--border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-lg);
   z-index: 1000;
   display: flex;
   flex-direction: column;
   opacity: 0;
   pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 40px 80px rgba(0,0,0,0.9);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+  overflow: hidden;
 }
 
 .inspector-panel.active {
